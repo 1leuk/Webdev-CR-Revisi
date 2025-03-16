@@ -15,7 +15,7 @@ export default function LandingPage() {
       <div className="absolute w-[500px] h-[500px] bg-blue-500 opacity-20 blur-3xl rounded-full top-1/4 left-1/4"></div>
 
       {/* Content */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1 }}
@@ -25,25 +25,31 @@ export default function LandingPage() {
           Welcome to Fashion.com
         </h1>
         <p className="text-lg text-gray-300 mt-4">
-          Discover exclusive products, unbeatable deals, and a seamless shopping experience.
+          Discover exclusive products, unbeatable deals, and a seamless shopping
+          experience.
         </p>
 
         {/* Buttons */}
         <div className="mt-8 flex justify-center space-x-4">
-  <button
-    className="px-6 py-3 text-black font-semibold bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-lg shadow-md transition-all duration-300 hover:scale-105 hover:shadow-lg"
-    onClick={() => router.push("/team")}
-  >
-    Know the Team
-  </button>
-  <button
-    className="px-6 py-3 text-white font-semibold bg-gray-800 rounded-lg shadow-md transition-all duration-300 hover:scale-105 hover:bg-gray-700"
-    onClick={() => router.push("/home")}
-  >
-    Go to Homepage
-  </button>
-</div>
-
+          <button
+            className="px-6 py-3 text-black font-semibold bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-lg shadow-md transition-all duration-300 hover:scale-105 hover:shadow-lg"
+            onClick={() => router.push("/team")}
+          >
+            Know the Team
+          </button>
+          <button
+            className="px-6 py-3 text-white font-semibold bg-gray-800 rounded-lg shadow-md transition-all duration-300 hover:scale-105 hover:bg-gray-700"
+            onClick={() => router.push("/home")}
+          >
+            Go to Homepage
+          </button>
+          <button
+            className="px-6 py-3 text-black font-semibold bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-lg shadow-md transition-all duration-300 hover:scale-105 hover:shadow-lg"
+            onClick={() => router.push("/login")}
+          >
+            Login
+          </button>
+        </div>
       </motion.div>
 
       {/* Decorative Bottom Glow */}

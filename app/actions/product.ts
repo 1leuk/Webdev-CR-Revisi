@@ -1,9 +1,11 @@
 import { Product } from "@/types/types";
 
-//limit
+// Get all products with optional limit
 export async function getProducts(limit = 12) {
   try {
-    const res = await fetch(`https://fakestoreapi.com/products?limit=${limit}`);
+    const res = await fetch(`/api/products?limit=${limit}`, {
+      next: { revalidate: 3600 } // Cache for 1 hour
+    });
 
     if (!res.ok) {
       throw new Error(`API Error: ${res.status}`);
@@ -17,10 +19,12 @@ export async function getProducts(limit = 12) {
   }
 }
 
-//per produk ID
+// Get product by ID
 export async function getProductById(id: string | number) {
   try {
-    const res = await fetch(`https://fakestoreapi.com/products/${id}`);
+    const res = await fetch(`/api/products/${id}`, {
+      next: { revalidate: 3600 } // Cache for 1 hour
+    });
 
     if (!res.ok) {
       throw new Error(`API Error: ${res.status}`);
@@ -34,11 +38,14 @@ export async function getProductById(id: string | number) {
   }
 }
 
-// per kategori
+// Get products by category
 export async function getProductsByCategory(categoryName: string, limit = 12) {
   try {
     const res = await fetch(
-      `https://fakestoreapi.com/products/category/${categoryName}`
+      `/api/products?category=${encodeURIComponent(categoryName)}&limit=${limit}`,
+      {
+        next: { revalidate: 3600 } // Cache for 1 hour
+      }
     );
 
     if (!res.ok) {
@@ -56,10 +63,12 @@ export async function getProductsByCategory(categoryName: string, limit = 12) {
   }
 }
 
-// semua kategori
+// Get all categories
 export async function getCategories() {
   try {
-    const res = await fetch("https://fakestoreapi.com/products/categories");
+    const res = await fetch("/api/categories", {
+      next: { revalidate: 3600 } // Cache for 1 hour
+    });
 
     if (!res.ok) {
       throw new Error(`API Error: ${res.status}`);
