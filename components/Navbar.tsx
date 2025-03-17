@@ -3,13 +3,17 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FiMenu, FiX, FiShoppingCart } from "react-icons/fi";
+import { FiMenu, FiX, FiShoppingCart, FiMessageSquare } from "react-icons/fi";
 import useCartStore from "@/store/cartStore";
+import { useSession } from "next-auth/react";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const pathname = usePathname();
+  const { data: session } = useSession();
+
   const { items } = useCartStore((state) => state);
   const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -21,6 +25,30 @@ export default function Navbar() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Fetch unread messages count
+  useEffect(() => {
+    if (session?.user) {
+      const fetchUnreadCount = async () => {
+        try {
+          const response = await fetch("/api/messages/unread-count");
+          if (response.ok) {
+            const data = await response.json();
+            setUnreadCount(data.count);
+          }
+        } catch (error) {
+          console.error("Error fetching unread count:", error);
+        }
+      };
+
+      fetchUnreadCount();
+
+      // Set up interval to check for new messages
+      const intervalId = setInterval(fetchUnreadCount, 30000); // every 30 seconds
+
+      return () => clearInterval(intervalId);
+    }
+  }, [session]);
 
   return (
     <nav
@@ -55,6 +83,24 @@ export default function Navbar() {
             </Link>
           ))}
 
+          {/* Chat Icon - Only show for logged in users */}
+          {session?.user && (
+            <Link
+              href="/chat"
+              className="relative flex items-center group"
+              aria-label="Messages"
+            >
+              <div className="relative p-2 rounded-full bg-gray-800 hover:bg-gray-700 transition-all">
+                <FiMessageSquare className="text-2xl" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-2 bg-yellow-500 text-gray-900 rounded-full text-xs font-bold flex items-center justify-center min-w-5 h-5 px-1 shadow-md">
+                    {unreadCount}
+                  </span>
+                )}
+              </div>
+            </Link>
+          )}
+
           {/* Cart Icon */}
           <Link
             href="/cart"
@@ -74,8 +120,30 @@ export default function Navbar() {
 
         {/* Mobile Menu Button */}
         <div className="md:hidden flex items-center space-x-4">
+          {/* Chat Icon for Mobile - Only show for logged in users */}
+          {session?.user && (
+            <Link
+              href="/chat"
+              className="relative flex items-center"
+              aria-label="Messages"
+            >
+              <div className="relative p-2 hover:text-yellow-400 transition">
+                <FiMessageSquare className="text-2xl" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-2 bg-yellow-500 text-gray-900 rounded-full text-xs font-bold flex items-center justify-center min-w-5 h-5 px-1 shadow-md">
+                    {unreadCount}
+                  </span>
+                )}
+              </div>
+            </Link>
+          )}
+
           {/* Cart Icon for Mobile */}
-          <Link href="/cart" className="relative flex items-center" aria-label="Shopping Cart">
+          <Link
+            href="/cart"
+            className="relative flex items-center"
+            aria-label="Shopping Cart"
+          >
             <div className="relative p-2 hover:text-yellow-400 transition">
               <FiShoppingCart className="text-2xl" />
               {cartItemCount > 0 && (
@@ -87,7 +155,10 @@ export default function Navbar() {
           </Link>
 
           {/* Menu Toggle */}
-          <button className="text-2xl text-white" onClick={() => setIsOpen(!isOpen)}>
+          <button
+            className="text-2xl text-white"
+            onClick={() => setIsOpen(!isOpen)}
+          >
             {isOpen ? <FiX /> : <FiMenu />}
           </button>
         </div>
@@ -113,6 +184,7 @@ export default function Navbar() {
               { name: "Shop", path: "/home/shop" },
               { name: "Discount", path: "/discount" },
               { name: "Team", path: "/team" },
+              ...(session?.user ? [{ name: "Chat", path: "/chat" }] : []),
             ].map((item) => (
               <Link
                 key={item.path}

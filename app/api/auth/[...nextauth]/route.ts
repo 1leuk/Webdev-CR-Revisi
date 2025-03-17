@@ -4,38 +4,6 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import NextAuth from "next-auth/next";
 import prisma from "@/lib/prisma";
-import { Role } from "@prisma/client";
-
-// Extend NextAuth types inline
-declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string
-      name: string | null
-      email: string
-      image: string | null
-      role: Role
-    }
-  }
-
-  interface User {
-    id: string
-    name: string | null
-    email: string
-    image: string | null
-    role: Role
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    id: string
-    name: string | null
-    email: string
-    picture: string | null
-    role: Role
-  }
-}
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -48,7 +16,7 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          return null;
+          throw new Error("Missing credentials");
         }
 
         const user = await prisma.user.findUnique({
@@ -58,7 +26,7 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!user || !user.password) {
-          return null;
+          throw new Error("Invalid credentials");
         }
 
         const isPasswordValid = await bcrypt.compare(
@@ -67,7 +35,7 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!isPasswordValid) {
-          return null;
+          throw new Error("Invalid credentials");
         }
 
         return {
@@ -98,11 +66,11 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (token) {
         session.user = {
-          id: token.id as string,
-          email: token.email as string,
-          name: token.name as string | null,
-          image: token.picture as string | null,
-          role: token.role as Role,
+          id: token.id,
+          email: token.email,
+          name: token.name,
+          image: token.picture,
+          role: token.role,
         };
       }
       return session;
@@ -117,3 +85,4 @@ export const authOptions: NextAuthOptions = {
 const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
+

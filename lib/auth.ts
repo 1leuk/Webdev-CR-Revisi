@@ -18,30 +18,35 @@ export async function getCurrentUser() {
 
   const user = await prisma.user.findUnique({
     where: {
-      email: session.user.email
+      email: session.user.email,
     },
   });
 
   return user;
 }
 
+export async function isAdmin() {
+  const session = await getSession();
+  return session?.user?.role === "ADMIN";
+}
+
 export async function requireAuth() {
   const session = await getSession();
-  
+
   if (!session?.user) {
     redirect("/login");
   }
-  
+
   return session.user;
 }
 
 export async function requireAdmin() {
   const session = await getSession();
-  
+
   if (!session?.user || session.user.role !== "ADMIN") {
     redirect("/");
   }
-  
+
   return session.user;
 }
 
@@ -49,13 +54,20 @@ export async function hashPassword(password: string) {
   return await bcrypt.hash(password, 10);
 }
 
-export async function comparePasswords(plainPassword: string, hashedPassword: string) {
+export async function comparePasswords(
+  plainPassword: string,
+  hashedPassword: string
+) {
   return await bcrypt.compare(plainPassword, hashedPassword);
 }
 
-export async function createUser(email: string, password: string, name?: string) {
+export async function createUser(
+  email: string,
+  password: string,
+  name?: string
+) {
   const hashedPassword = await hashPassword(password);
-  
+
   return await prisma.user.create({
     data: {
       email,

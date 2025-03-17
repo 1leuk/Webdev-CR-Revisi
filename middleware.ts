@@ -38,5 +38,6 @@ export const config = {
     "/admin/:path*",
     "/orders/:path*",
     "/checkout/:path*",
+    "/chat/:path*",  // Added chat routes
   ],
 };

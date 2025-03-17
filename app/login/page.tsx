@@ -14,21 +14,21 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast.error("Please fill all fields");
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
       const result = await signIn("credentials", {
         email,
         password,
         redirect: false,
       });
-      
+
       if (result?.error) {
         toast.error(result.error || "Login failed");
       } else {
