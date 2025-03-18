@@ -37,6 +37,8 @@ model User {
   sentMessages     Message[]          @relation("SentMessages")
   receivedMessages Message[]          @relation("ReceivedMessages")
   conversations    UserConversation[] // Fix relasi many-to-many
+  discussions      Discussion[]       // Added discussions
+  comments         Comment[]          // Added comments
 }
 
 model Account {
@@ -76,17 +78,18 @@ model VerificationToken {
 }
 
 model Product {
-  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
   title       String
   price       Float
   description String
   category    String
   image       String
   rating      Rating
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   cartItems   CartItem[]
   orderItems  OrderItem[]
+  discussions Discussion[]
 }
 
 type Rating {
@@ -183,6 +186,31 @@ model Message {
   conversationId String       @db.ObjectId
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   read           Boolean      @default(false)
+}
+
+// New models for product discussions
+model Discussion {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  content   String
+  userId    String    @db.ObjectId
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String    @db.ObjectId
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  comments  Comment[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Comment {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  content      String
+  userId       String     @db.ObjectId
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  discussionId String     @db.ObjectId
+  discussion   Discussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 }
 
 enum Role {

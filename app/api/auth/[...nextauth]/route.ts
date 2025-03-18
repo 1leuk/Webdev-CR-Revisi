@@ -71,18 +71,18 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role || "USER"; // Default to USER if no role is provided
         token.picture = user.image;
       }
-      
+
       // If it's a first time sign in with OAuth, set their role to USER
       if (account && account.provider !== "credentials" && user) {
         const dbUser = await prisma.user.findUnique({
           where: { id: user.id },
         });
-        
+
         if (dbUser) {
           token.role = dbUser.role;
         }
       }
-      
+
       return token;
     },
     async session({ session, token }) {
@@ -104,7 +104,7 @@ export const authOptions: NextAuthOptions = {
           const existingCart = await prisma.cart.findFirst({
             where: { userId: user.id },
           });
-          
+
           if (!existingCart) {
             await prisma.cart.create({
               data: { userId: user.id },
@@ -114,9 +114,9 @@ export const authOptions: NextAuthOptions = {
           console.error("Error creating cart for new user:", error);
         }
       }
-      
+
       return true;
-    }
+    },
   },
   session: {
     strategy: "jwt",

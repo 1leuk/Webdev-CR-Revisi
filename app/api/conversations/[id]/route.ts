@@ -3,7 +3,6 @@ import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { pusher } from "@/lib/pusher";
 
-
 // GET /api/conversations/[id] - Get a specific conversation with messages
 export async function GET(
   req: NextRequest,
@@ -97,7 +96,10 @@ export async function POST(
     const { content, receiverId } = body;
 
     if (!content) {
-      return NextResponse.json({ error: "Message content is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Message content is required" },
+        { status: 400 }
+      );
     }
 
     const conversation = await prisma.conversation.findFirst({
@@ -113,7 +115,10 @@ export async function POST(
     });
 
     if (!conversation) {
-      return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Conversation not found" },
+        { status: 404 }
+      );
     }
 
     const message = await prisma.message.create({
@@ -123,7 +128,17 @@ export async function POST(
         receiverId,
         conversationId: id,
       },
-      include: { sender: { select: { id: true, name: true, email: true, image: true, role: true } } },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+          },
+        },
+      },
     });
 
     await prisma.conversation.update({
@@ -137,6 +152,9 @@ export async function POST(
     return NextResponse.json(message);
   } catch (error) {
     console.error("Error sending message:", error);
-    return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to send message" },
+      { status: 500 }
+    );
   }
 }

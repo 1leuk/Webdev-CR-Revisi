@@ -44,7 +44,10 @@ export default function ChatPage() {
     fetchUser();
     fetchConversations();
 
-    if (!process.env.NEXT_PUBLIC_PUSHER_KEY || !process.env.NEXT_PUBLIC_PUSHER_CLUSTER) {
+    if (
+      !process.env.NEXT_PUBLIC_PUSHER_KEY ||
+      !process.env.NEXT_PUBLIC_PUSHER_CLUSTER
+    ) {
       console.error("Pusher env variables are missing.");
       return;
     }
@@ -57,17 +60,22 @@ export default function ChatPage() {
     if (userId) {
       const newUserChannel = pusher.subscribe(`user-${userId}`);
       setUserChannel(newUserChannel);
-      
-      newUserChannel.bind("new-conversation", (newConversation: Conversation) => {
-        console.log("New conversation:", newConversation);
-        addConversation(newConversation);
-      });
+
+      newUserChannel.bind(
+        "new-conversation",
+        (newConversation: Conversation) => {
+          console.log("New conversation:", newConversation);
+          addConversation(newConversation);
+        }
+      );
     }
 
     if (currentConversation) {
-      const newChatChannel = pusher.subscribe(`conversation-${currentConversation.id}`);
+      const newChatChannel = pusher.subscribe(
+        `conversation-${currentConversation.id}`
+      );
       setChatChannel(newChatChannel);
-      
+
       newChatChannel.bind("new-message", (newMessage: any) => {
         console.log("New message received:", newMessage);
         addMessageToConversation(newMessage);
@@ -85,7 +93,14 @@ export default function ChatPage() {
         pusher.unsubscribe(`conversation-${currentConversation.id}`);
       }
     };
-  }, [fetchConversations, setCurrentConversation, currentConversation, userId, addMessageToConversation, addConversation]);
+  }, [
+    fetchConversations,
+    setCurrentConversation,
+    currentConversation,
+    userId,
+    addMessageToConversation,
+    addConversation,
+  ]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-200 pt-16">

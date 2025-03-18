@@ -11,9 +11,9 @@ export async function GET(req: NextRequest) {
       where: {
         users: {
           some: {
-            userId: user.id
-          }
-        }
+            userId: user.id,
+          },
+        },
       },
       include: {
         users: {
@@ -24,44 +24,46 @@ export async function GET(req: NextRequest) {
                 name: true,
                 email: true,
                 image: true,
-                role: true
-              }
-            }
-          }
+                role: true,
+              },
+            },
+          },
         },
         messages: {
           orderBy: {
-            createdAt: 'desc'
+            createdAt: "desc",
           },
-          take: 1
-        }
+          take: 1,
+        },
       },
       orderBy: {
-        updatedAt: 'desc'
-      }
+        updatedAt: "desc",
+      },
     });
 
     // Get unread message counts for each conversation
-    const conversationsWithCounts = await Promise.all(conversations.map(async (conversation) => {
-      const unreadCount = await prisma.message.count({
-        where: {
-          conversationId: conversation.id,
-          receiverId: user.id,
-          read: false
-        }
-      });
+    const conversationsWithCounts = await Promise.all(
+      conversations.map(async (conversation) => {
+        const unreadCount = await prisma.message.count({
+          where: {
+            conversationId: conversation.id,
+            receiverId: user.id,
+            read: false,
+          },
+        });
 
-      // Extract users from the UserConversation relation
-      const users = conversation.users.map(uc => uc.user);
+        // Extract users from the UserConversation relation
+        const users = conversation.users.map((uc) => uc.user);
 
-      return {
-        ...conversation,
-        users,
-        lastMessage: conversation.messages[0] || null,
-        unreadCount,
-        messages: undefined // Remove the messages array since we only need lastMessage
-      };
-    }));
+        return {
+          ...conversation,
+          users,
+          lastMessage: conversation.messages[0] || null,
+          unreadCount,
+          messages: undefined, // Remove the messages array since we only need lastMessage
+        };
+      })
+    );
 
     return NextResponse.json(conversationsWithCounts);
   } catch (error) {
@@ -96,10 +98,10 @@ export async function POST(req: NextRequest) {
       data: {
         topic,
         users: {
-          create: uniqueUserIds.map(id => ({
-            user: { connect: { id } }
-          }))
-        }
+          create: uniqueUserIds.map((id) => ({
+            user: { connect: { id } },
+          })),
+        },
       },
       include: {
         users: {
@@ -110,17 +112,17 @@ export async function POST(req: NextRequest) {
                 name: true,
                 email: true,
                 image: true,
-                role: true
-              }
-            }
-          }
-        }
-      }
+                role: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     // If initial message is provided, add it to the conversation
     if (initialMessage) {
-      const receiverIds = uniqueUserIds.filter(id => id !== user.id);
+      const receiverIds = uniqueUserIds.filter((id) => id !== user.id);
 
       // Create a message for each recipient
       if (receiverIds.length > 0) {
@@ -130,7 +132,7 @@ export async function POST(req: NextRequest) {
             senderId: user.id,
             receiverId: receiverIds[0], // For simplicity, send to the first user
             conversationId: conversation.id,
-          }
+          },
         });
       } else {
         // If it's just the user talking to themselves or a note
@@ -139,17 +141,17 @@ export async function POST(req: NextRequest) {
             content: initialMessage,
             senderId: user.id,
             conversationId: conversation.id,
-          }
+          },
         });
       }
     }
 
     // Extract users from the UserConversation relation for the response
-    const users = conversation.users.map(uc => uc.user);
+    const users = conversation.users.map((uc) => uc.user);
     const conversationWithUsers = {
       ...conversation,
       users,
-      userIds: uniqueUserIds
+      userIds: uniqueUserIds,
     };
 
     return NextResponse.json(conversationWithUsers, { status: 201 });
