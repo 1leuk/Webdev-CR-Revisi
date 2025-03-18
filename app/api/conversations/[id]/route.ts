@@ -13,18 +13,18 @@ export async function GET(
     const user = await requireAuth(); // Will redirect to login if not authenticated
     const { id } = params;
 
-    // Fetch conversation and include participants
+    // Fetch conversation and include users through UserConversation
     const conversation = await prisma.conversation.findFirst({
       where: {
         id,
-        participants: {
+        users: {
           some: {
             userId: user.id,
           },
         },
       },
       include: {
-        participants: {
+        users: {
           include: {
             user: {
               select: {
@@ -62,8 +62,8 @@ export async function GET(
     }
 
     // Extract userIds and users
-    const userIds = conversation.participants.map((p) => p.userId);
-    const users = conversation.participants.map((p) => p.user);
+    const userIds = conversation.users.map((u) => u.userId);
+    const users = conversation.users.map((p) => p.user);
 
     // Mark unread messages as read
     await prisma.message.updateMany({
@@ -86,7 +86,6 @@ export async function GET(
 }
 
 // POST /api/conversations/[id] - Add a message to a conversation
-// POST /api/conversations/[id] - Send a new message
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -104,12 +103,12 @@ export async function POST(
     const conversation = await prisma.conversation.findFirst({
       where: {
         id,
-        participants: {
+        users: {
           some: { userId: user.id },
         },
       },
       include: {
-        participants: { select: { userId: true } },
+        users: { select: { userId: true } },
       },
     });
 
@@ -141,4 +140,3 @@ export async function POST(
     return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
   }
 }
-

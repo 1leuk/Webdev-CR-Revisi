@@ -10,6 +10,8 @@ import { Button } from "@/components/button";
 import { Toaster } from "react-hot-toast";
 import { FiMessageSquare, FiPlus } from "react-icons/fi";
 import Pusher from "pusher-js";
+import type { Channel } from "pusher-js";
+import { Conversation } from "@/types/messages";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -24,6 +26,8 @@ export default function ChatPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userChannel, setUserChannel] = useState<Channel | null>(null);
+  const [chatChannel, setChatChannel] = useState<Channel | null>(null);
 
   useEffect(() => {
     // Fetch user ID
@@ -50,19 +54,21 @@ export default function ChatPage() {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
     });
 
-    let userChannel, chatChannel;
-
     if (userId) {
-      userChannel = pusher.subscribe(`user-${userId}`);
-      userChannel.bind("new-conversation", (newConversation) => {
+      const newUserChannel = pusher.subscribe(`user-${userId}`);
+      setUserChannel(newUserChannel);
+      
+      newUserChannel.bind("new-conversation", (newConversation: Conversation) => {
         console.log("New conversation:", newConversation);
         addConversation(newConversation);
       });
     }
 
     if (currentConversation) {
-      chatChannel = pusher.subscribe(`conversation-${currentConversation.id}`);
-      chatChannel.bind("new-message", (newMessage) => {
+      const newChatChannel = pusher.subscribe(`conversation-${currentConversation.id}`);
+      setChatChannel(newChatChannel);
+      
+      newChatChannel.bind("new-message", (newMessage: any) => {
         console.log("New message received:", newMessage);
         addMessageToConversation(newMessage);
       });
@@ -72,14 +78,14 @@ export default function ChatPage() {
     return () => {
       if (userChannel) {
         userChannel.unbind_all();
-        userChannel.unsubscribe();
+        pusher.unsubscribe(`user-${userId}`);
       }
-      if (chatChannel) {
+      if (chatChannel && currentConversation) {
         chatChannel.unbind_all();
-        chatChannel.unsubscribe();
+        pusher.unsubscribe(`conversation-${currentConversation.id}`);
       }
     };
-  }, [fetchConversations, setCurrentConversation, currentConversation, userId]);
+  }, [fetchConversations, setCurrentConversation, currentConversation, userId, addMessageToConversation, addConversation]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-200 pt-16">

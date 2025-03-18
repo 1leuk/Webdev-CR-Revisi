@@ -39,7 +39,8 @@ export default function ShopPage() {
     addToCart(product);
   };
 
-  const handleViewProduct = (id: number) => {
+  // Fix type conversion - Convert string or number to number
+  const handleViewProduct = (id: number | string) => {
     router.push(`/product/${id}`);
   };
 

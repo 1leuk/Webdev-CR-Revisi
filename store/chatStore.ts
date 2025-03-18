@@ -28,6 +28,10 @@ interface ChatStore {
   // UI Actions
   setCurrentConversation: (conversation: Conversation | null) => void;
   resetState: () => void;
+  
+  // Additional methods needed by chat page
+  addMessageToConversation: (message: Message) => void;
+  addConversation: (conversation: Conversation) => void;
 }
 
 const defaultState = {
@@ -245,6 +249,57 @@ const useChatStore = create<ChatStore>((set, get) => ({
 
   resetState: () => {
     set(defaultState);
+  },
+  
+  // Additional methods for chat page
+  addMessageToConversation: (message: Message) => {
+    const { currentConversation, conversations } = get();
+    
+    // Add to current conversation if it matches
+    if (currentConversation && message.conversationId === currentConversation.id) {
+      set({
+        currentConversation: {
+          ...currentConversation,
+          messages: [...(currentConversation.messages || []), message],
+        },
+      });
+    }
+    
+    // Update the last message in conversations list
+    const updatedConversations = conversations.map((conversation) => {
+      if (conversation.id === message.conversationId) {
+        return {
+          ...conversation,
+          lastMessage: message,
+          unreadCount: (conversation.unreadCount || 0) + 1,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return conversation;
+    });
+    
+    // Sort by most recent message
+    const sortedConversations = [...updatedConversations].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+    
+    set({ conversations: sortedConversations });
+  },
+  
+  addConversation: (conversation: Conversation) => {
+    const { conversations } = get();
+    
+    // Check if conversation already exists
+    const exists = conversations.some((c) => c.id === conversation.id);
+    
+    if (!exists) {
+      // Add to beginning of list as it's the newest
+      set({
+        conversations: [conversation, ...conversations],
+      });
+      
+      toast.success("New conversation started");
+    }
   },
 }));
 

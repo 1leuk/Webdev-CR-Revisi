@@ -9,14 +9,14 @@ export async function GET(req: NextRequest) {
 
     const conversations = await prisma.conversation.findMany({
       where: {
-        participants: {
+        users: {
           some: {
             userId: user.id
           }
         }
       },
       include: {
-        participants: {
+        users: {
           include: {
             user: {
               select: {
@@ -51,8 +51,12 @@ export async function GET(req: NextRequest) {
         }
       });
 
+      // Extract users from the UserConversation relation
+      const users = conversation.users.map(uc => uc.user);
+
       return {
         ...conversation,
+        users,
         lastMessage: conversation.messages[0] || null,
         unreadCount,
         messages: undefined // Remove the messages array since we only need lastMessage
@@ -87,18 +91,18 @@ export async function POST(req: NextRequest) {
     // Ensure the current user is included in the conversation
     const uniqueUserIds = Array.from(new Set([...userIds, user.id]));
 
-    // Create the conversation with participants
+    // Create the conversation with users through UserConversation
     const conversation = await prisma.conversation.create({
       data: {
         topic,
-        participants: {
+        users: {
           create: uniqueUserIds.map(id => ({
             user: { connect: { id } }
           }))
         }
       },
       include: {
-        participants: {
+        users: {
           include: {
             user: {
               select: {
@@ -140,7 +144,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json(conversation, { status: 201 });
+    // Extract users from the UserConversation relation for the response
+    const users = conversation.users.map(uc => uc.user);
+    const conversationWithUsers = {
+      ...conversation,
+      users,
+      userIds: uniqueUserIds
+    };
+
+    return NextResponse.json(conversationWithUsers, { status: 201 });
   } catch (error) {
     console.error("Error creating conversation:", error);
     return NextResponse.json(

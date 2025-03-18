@@ -6,9 +6,13 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import NextAuth from "next-auth/next";
 import prisma from "@/lib/prisma";
+import { Adapter } from "next-auth/adapters"; // Import the Adapter type from next-auth
+
+// Use type assertion to tell TypeScript that our adapter matches the expected type
+const adapter = PrismaAdapter(prisma) as unknown as Adapter;
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
