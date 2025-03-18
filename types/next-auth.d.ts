@@ -24,8 +24,11 @@ declare module "next-auth" {
   }
 
   interface Session {
-    user: User & {
+    user: {
       id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
       role: Role;
     };
   }
@@ -41,3 +44,12 @@ declare module "next-auth/jwt" {
     role: Role;
   }
 }
+
+// Optional: Create a type for enhanced type safety
+export type SessionUser = {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  role: Role;
+};

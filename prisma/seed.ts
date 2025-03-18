@@ -1,19 +1,29 @@
-import { PrismaClient } from "@prisma/client";
-import { hashPassword } from "../lib/auth";
+import { PrismaClient, Role } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
+
+// Helper function for hashing password
+async function hashPassword(password: string) {
+  return await bcrypt.hash(password, 10);
+}
 
 async function main() {
   try {
     console.log("Starting seed...");
 
     // Clean up existing data
+    await prisma.userConversation.deleteMany({});
+    await prisma.message.deleteMany({});
+    await prisma.conversation.deleteMany({});
     await prisma.cartItem.deleteMany({});
     await prisma.cart.deleteMany({});
     await prisma.orderItem.deleteMany({});
     await prisma.order.deleteMany({});
     await prisma.product.deleteMany({});
     await prisma.discount.deleteMany({});
+    await prisma.account.deleteMany({});
+    await prisma.session.deleteMany({});
     await prisma.user.deleteMany({});
 
     // Create users
@@ -26,7 +36,7 @@ async function main() {
         name: "Admin User",
         email: "admin@example.com",
         password: adminPassword,
-        role: "ADMIN",
+        role: Role.ADMIN,
       },
     });
 
@@ -35,7 +45,7 @@ async function main() {
         name: "Regular User",
         email: "user@example.com",
         password: userPassword,
-        role: "USER",
+        role: Role.USER,
       },
     });
 

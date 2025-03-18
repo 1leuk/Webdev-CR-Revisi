@@ -1,14 +1,19 @@
+// app/api/auth/[...nextauth]/route.ts
 import { NextAuthOptions } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import NextAuth from "next-auth/next";
 import prisma from "@/lib/prisma";
-import { Adapter } from "next-auth/adapters";
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as Adapter,
+  adapter: PrismaAdapter(prisma),
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
     CredentialsProvider({
       name: "credentials",
       credentials: {
@@ -45,7 +50,6 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           image: user.image,
           role: user.role,
-          emailVerified: user.emailVerified,
         };
       },
     }),
@@ -55,33 +59,65 @@ export const authOptions: NextAuthOptions = {
     error: "/login",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
-        token.role = user.role;
+        token.role = user.role || "USER"; // Default to USER if no role is provided
         token.picture = user.image;
       }
+      
+      // If it's a first time sign in with OAuth, set their role to USER
+      if (account && account.provider !== "credentials" && user) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+        });
+        
+        if (dbUser) {
+          token.role = dbUser.role;
+        }
+      }
+      
       return token;
     },
     async session({ session, token }) {
       if (token) {
         session.user = {
-          id: token.id,
-          email: token.email,
+          id: token.id as string,
+          email: token.email as string,
           name: token.name,
           image: token.picture,
-          role: token.role,
+          role: token.role as "USER" | "ADMIN",
         };
       }
       return session;
     },
+    async signIn({ user, account }) {
+      // Create a cart for new OAuth users if they don't have one
+      if (account && account.provider !== "credentials" && user?.id) {
+        try {
+          const existingCart = await prisma.cart.findFirst({
+            where: { userId: user.id },
+          });
+          
+          if (!existingCart) {
+            await prisma.cart.create({
+              data: { userId: user.id },
+            });
+          }
+        } catch (error) {
+          console.error("Error creating cart for new user:", error);
+        }
+      }
+      
+      return true;
+    }
   },
   session: {
     strategy: "jwt",
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || process.env.NEXAUTH_SECRET, // Support both spellings
 };
 
 const handler = NextAuth(authOptions);
