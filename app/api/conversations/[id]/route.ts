@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import { pusher } from "@/lib/pusher";
+
 
 // GET /api/conversations/[id] - Get a specific conversation with messages
 export async function GET(
@@ -84,6 +86,7 @@ export async function GET(
 }
 
 // POST /api/conversations/[id] - Add a message to a conversation
+// POST /api/conversations/[id] - Send a new message
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -95,80 +98,47 @@ export async function POST(
     const { content, receiverId } = body;
 
     if (!content) {
-      return NextResponse.json(
-        { error: "Message content is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Message content is required" }, { status: 400 });
     }
 
-    // Fetch the conversation to check participation and get userIds
     const conversation = await prisma.conversation.findFirst({
       where: {
         id,
         participants: {
-          some: {
-            userId: user.id,
-          },
+          some: { userId: user.id },
         },
       },
       include: {
-        participants: {
-          select: {
-            userId: true,
-          },
-        },
+        participants: { select: { userId: true } },
       },
     });
 
     if (!conversation) {
-      return NextResponse.json(
-        { error: "Conversation not found or you don't have access" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
     }
 
-    // Extract userIds from participants
-    const userIds = conversation.participants.map((p) => p.userId);
-
-    // Determine the receiver
-    const validReceiverId = userIds.includes(receiverId)
-      ? receiverId
-      : userIds.find((uid) => uid !== user.id) || null;
-
-    // Create the message
     const message = await prisma.message.create({
       data: {
         content,
         senderId: user.id,
-        receiverId: validReceiverId,
+        receiverId,
         conversationId: id,
       },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-            role: true,
-          },
-        },
-      },
+      include: { sender: { select: { id: true, name: true, email: true, image: true, role: true } } },
     });
 
-    // Update conversation's updatedAt timestamp
     await prisma.conversation.update({
       where: { id },
       data: { updatedAt: new Date() },
     });
 
+    // Broadcast the new message
+    await pusher.trigger(`conversation-${id}`, "new-message", message);
+
     return NextResponse.json(message);
   } catch (error) {
-    console.error(`Error adding message to conversation ${params.id}:`, error);
-    return NextResponse.json(
-      { error: "Failed to add message to conversation" },
-      { status: 500 }
-    );
+    console.error("Error sending message:", error);
+    return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
   }
 }
 

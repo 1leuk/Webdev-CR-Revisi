@@ -9,6 +9,7 @@ import CreateConversationModal from "@/components/chat/CreateConversationModal";
 import { Button } from "@/components/button";
 import { Toaster } from "react-hot-toast";
 import { FiMessageSquare, FiPlus } from "react-icons/fi";
+import Pusher from "pusher-js";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -17,19 +18,68 @@ export default function ChatPage() {
     currentConversation,
     fetchConversations,
     setCurrentConversation,
+    addMessageToConversation,
+    addConversation,
   } = useChatStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Fetch conversations when component mounts
+    // Fetch user ID
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("/api/user"); // Change this if your API differs
+        const data = await res.json();
+        setUserId(data.id);
+      } catch (error) {
+        console.error("Failed to fetch user:", error);
+      }
+    };
+
+    fetchUser();
     fetchConversations();
 
-    // Reset state when component unmounts
+    if (!process.env.NEXT_PUBLIC_PUSHER_KEY || !process.env.NEXT_PUBLIC_PUSHER_CLUSTER) {
+      console.error("Pusher env variables are missing.");
+      return;
+    }
+
+    // Pusher setup
+    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
+      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
+    });
+
+    let userChannel, chatChannel;
+
+    if (userId) {
+      userChannel = pusher.subscribe(`user-${userId}`);
+      userChannel.bind("new-conversation", (newConversation) => {
+        console.log("New conversation:", newConversation);
+        addConversation(newConversation);
+      });
+    }
+
+    if (currentConversation) {
+      chatChannel = pusher.subscribe(`conversation-${currentConversation.id}`);
+      chatChannel.bind("new-message", (newMessage) => {
+        console.log("New message received:", newMessage);
+        addMessageToConversation(newMessage);
+      });
+    }
+
+    // Cleanup
     return () => {
-      setCurrentConversation(null);
+      if (userChannel) {
+        userChannel.unbind_all();
+        userChannel.unsubscribe();
+      }
+      if (chatChannel) {
+        chatChannel.unbind_all();
+        chatChannel.unsubscribe();
+      }
     };
-  }, [fetchConversations, setCurrentConversation]);
+  }, [fetchConversations, setCurrentConversation, currentConversation, userId]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-200 pt-16">

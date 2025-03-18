@@ -10,24 +10,34 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model UserConversation {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String       @db.ObjectId
+  conversationId String       @db.ObjectId
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation  Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, conversationId])
+}
+
 model User {
-  id               String         @id @default(auto()) @map("_id") @db.ObjectId
+  id               String             @id @default(auto()) @map("_id") @db.ObjectId
   name             String?
-  email            String         @unique
+  email            String             @unique
   emailVerified    DateTime?
   password         String?
   image            String?
-  role             Role           @default(USER)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  role             Role               @default(USER)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
   accounts         Account[]
   sessions         Session[]
   orders           Order[]
   cart             Cart?
-  // New fields for chat feature
-  sentMessages     Message[]      @relation("SentMessages")
-  receivedMessages Message[]      @relation("ReceivedMessages")
-  conversations    Conversation[] @relation("UserConversations")
+  sentMessages     Message[]          @relation("SentMessages")
+  receivedMessages Message[]          @relation("ReceivedMessages")
+  conversations    UserConversation[] // Fix relasi many-to-many
 }
 
 model Account {
@@ -154,18 +164,15 @@ model Discount {
   updatedAt   DateTime  @updatedAt
 }
 
-// New model for chat conversations
 model Conversation {
-  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  id        String             @id @default(auto()) @map("_id") @db.ObjectId
   topic     String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
   messages  Message[]
-  users     User[]    @relation("UserConversations", fields: [userIds], references: [id])
-  userIds   String[]  @db.ObjectId
+  users     UserConversation[] // Fix relasi many-to-many
 }
 
-// New model for chat messages
 model Message {
   id             String       @id @default(auto()) @map("_id") @db.ObjectId
   content        String

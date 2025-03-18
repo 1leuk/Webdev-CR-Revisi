@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { FiMenu, FiX, FiShoppingCart, FiMessageSquare } from "react-icons/fi";
 import useCartStore from "@/store/cartStore";
 import { useSession } from "next-auth/react";
+import path from "path";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -69,6 +70,7 @@ export default function Navbar() {
             { name: "Shop", path: "/home/shop" },
             { name: "Discount", path: "/discount" },
             { name: "Team", path: "/team" },
+            { name: "Login", path: "/login" },
           ].map((item) => (
             <Link
               key={item.path}
