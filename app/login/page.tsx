@@ -5,6 +5,8 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast, Toaster } from "react-hot-toast";
+import { FiMail } from "react-icons/fi";
+import { FcGoogle } from "react-icons/fc";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -44,6 +46,11 @@ export default function LoginPage() {
     }
   };
 
+  const handleGoogleLogin = () => {
+    setIsLoading(true);
+    signIn("google", { callbackUrl: "/home" });
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-black">
       <Toaster position="top-right" />
@@ -54,6 +61,26 @@ export default function LoginPage() {
         <p className="text-gray-300 text-center mb-6">
           Sign in to continue your shopping experience.
         </p>
+        
+        {/* OAuth Login Button */}
+        <button
+          onClick={handleGoogleLogin}
+          disabled={isLoading}
+          className="w-full bg-white text-gray-800 py-3 rounded-md font-bold hover:bg-gray-100 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center mb-4"
+        >
+          <FcGoogle className="mr-2 text-xl" />
+          Sign in with Google
+        </button>
+        
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-600"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-gray-800 text-gray-400">Or continue with</span>
+          </div>
+        </div>
+        
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-gray-300 mb-1">Email</label>
@@ -78,9 +105,10 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-yellow-500 text-black py-3 rounded-md font-bold hover:bg-yellow-600 transition disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full bg-yellow-500 text-black py-3 rounded-md font-bold hover:bg-yellow-600 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
           >
-            {isLoading ? "Signing in..." : "Sign In"}
+            <FiMail className="mr-2" />
+            {isLoading ? "Signing in..." : "Sign In with Email"}
           </button>
         </form>
         <p className="text-gray-400 text-center mt-4">

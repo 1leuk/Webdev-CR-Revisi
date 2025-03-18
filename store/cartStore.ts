@@ -1,6 +1,7 @@
 import { Product } from "@/types/types";
 import { create } from "zustand";
 import { toast } from "react-hot-toast";
+import { useSession } from "next-auth/react";
 
 interface CartItem extends Product {
   quantity: number;
@@ -15,7 +16,24 @@ interface CartStore {
   updateQty: (action: "increment" | "decrement", productId: number | string) => Promise<void>;
   clearCart: () => Promise<void>;
   fetchCart: () => Promise<void>;
+  syncLocalCartWithServer: () => Promise<void>;
+  mergeLocalWithServerCart: () => Promise<void>;
 }
+
+// Helper to get cart from localStorage
+const getLocalCart = (): CartItem[] => {
+  if (typeof window === 'undefined') return [];
+  
+  const savedCart = localStorage.getItem('cart');
+  return savedCart ? JSON.parse(savedCart) : [];
+};
+
+// Helper to save cart to localStorage
+const saveLocalCart = (items: CartItem[]) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('cart', JSON.stringify(items));
+  }
+};
 
 const useCartStore = create<CartStore>((set, get) => ({
   items: [],
@@ -26,11 +44,17 @@ const useCartStore = create<CartStore>((set, get) => ({
     try {
       set({ loading: true });
       
+      // Try to get the server cart
       const response = await fetch("/api/cart");
       
       // If not logged in, use the local cart
       if (response.status === 401) {
-        set({ initialized: true, loading: false });
+        const localCart = getLocalCart();
+        set({ 
+          items: localCart,
+          initialized: true, 
+          loading: false 
+        });
         return;
       }
       
@@ -39,6 +63,8 @@ const useCartStore = create<CartStore>((set, get) => ({
       }
       
       const cart = await response.json();
+      
+      // Update the store with server cart
       set({ 
         items: cart.items || [], 
         initialized: true,
@@ -46,8 +72,109 @@ const useCartStore = create<CartStore>((set, get) => ({
       });
     } catch (error) {
       console.error("Error fetching cart:", error);
+      
+      // Fallback to local cart on error
+      const localCart = getLocalCart();
+      set({ 
+        items: localCart,
+        initialized: true, 
+        loading: false 
+      });
+      
       toast.error("Failed to load your cart");
-      set({ loading: false, initialized: true });
+    }
+  },
+
+  syncLocalCartWithServer: async () => {
+    // This function synchronizes the current local cart to the server
+    // Used when a user logs in to ensure their local cart gets saved
+    try {
+      const localCart = getLocalCart();
+      
+      if (localCart.length === 0) return;
+      
+      // Loop through each item and add to server cart
+      for (const item of localCart) {
+        await fetch("/api/cart", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            productId: item.id,
+            quantity: item.quantity,
+          }),
+        });
+      }
+      
+      // Clear local cart after syncing
+      localStorage.removeItem('cart');
+      
+      // Fetch the updated cart from server
+      await get().fetchCart();
+      
+    } catch (error) {
+      console.error("Error syncing cart:", error);
+    }
+  },
+
+  mergeLocalWithServerCart: async () => {
+    // Merge local cart with server cart when user logs in
+    try {
+      const localCart = getLocalCart();
+      
+      if (localCart.length === 0) {
+        await get().fetchCart();
+        return;
+      }
+      
+      const response = await fetch("/api/cart");
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch server cart");
+      }
+      
+      const serverCart = await response.json();
+      
+      // For each local cart item, add it to server cart if not already there
+      // or update quantity if it exists
+      for (const localItem of localCart) {
+        const serverItem = serverCart.items?.find((item: CartItem) => item.id === localItem.id);
+        
+        if (serverItem) {
+          // Item exists, update quantity
+          await fetch(`/api/cart/${localItem.id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ 
+              action: "set",
+              quantity: serverItem.quantity + localItem.quantity 
+            }),
+          });
+        } else {
+          // Item doesn't exist, add it
+          await fetch("/api/cart", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              productId: localItem.id,
+              quantity: localItem.quantity,
+            }),
+          });
+        }
+      }
+      
+      // Clear local cart after merging
+      localStorage.removeItem('cart');
+      
+      // Fetch the updated cart from server
+      await get().fetchCart();
+    } catch (error) {
+      console.error("Error merging carts:", error);
     }
   },
 
@@ -73,25 +200,25 @@ const useCartStore = create<CartStore>((set, get) => ({
       
       // If not logged in, handle locally
       if (response.status === 401) {
-        const existingItem = get().items.find(item => item.id === product.id);
+        const localCart = getLocalCart();
+        const existingItemIndex = localCart.findIndex(item => item.id === product.id);
         
-        if (existingItem) {
+        if (existingItemIndex >= 0) {
           // If item exists, increment quantity
-          set(state => ({
-            items: state.items.map(item =>
-              item.id === product.id 
-                ? { ...item, quantity: item.quantity + 1 } 
-                : item
-            ),
-            loading: false,
-          }));
+          localCart[existingItemIndex].quantity += 1;
         } else {
           // Add new item
-          set(state => ({
-            items: [...state.items, { ...product, quantity: 1 }],
-            loading: false,
-          }));
+          localCart.push({ ...product, quantity: 1 });
         }
+        
+        // Save to localStorage
+        saveLocalCart(localCart);
+        
+        // Update store
+        set({ 
+          items: localCart,
+          loading: false 
+        });
         
         toast.success(`${product.title} added to cart`);
         return;
@@ -127,10 +254,17 @@ const useCartStore = create<CartStore>((set, get) => ({
       
       // If not logged in, handle locally
       if (response.status === 401) {
-        set(state => ({
-          items: state.items.filter(item => item.id !== productId),
+        const localCart = getLocalCart().filter(item => item.id !== productId);
+        
+        // Save to localStorage
+        saveLocalCart(localCart);
+        
+        // Update store
+        set({
+          items: localCart,
           loading: false,
-        }));
+        });
+        
         toast.success("Item removed from cart");
         return;
       }
@@ -169,23 +303,30 @@ const useCartStore = create<CartStore>((set, get) => ({
       
       // If not logged in, handle locally
       if (response.status === 401) {
-        set(state => ({
-          items: state.items.map(item => {
-            if (item.id !== productId) return item;
-            
-            if (action === "increment") {
-              return { ...item, quantity: item.quantity + 1 };
-            } else if (action === "decrement") {
-              return { 
-                ...item, 
-                quantity: Math.max(1, item.quantity - 1) 
-              };
-            }
-            
-            return item;
-          }),
+        const localCart = getLocalCart();
+        const updatedLocalCart = localCart.map(item => {
+          if (item.id !== productId) return item;
+          
+          if (action === "increment") {
+            return { ...item, quantity: item.quantity + 1 };
+          } else if (action === "decrement") {
+            return { 
+              ...item, 
+              quantity: Math.max(1, item.quantity - 1) 
+            };
+          }
+          
+          return item;
+        });
+        
+        // Save to localStorage
+        saveLocalCart(updatedLocalCart);
+        
+        // Update store
+        set({
+          items: updatedLocalCart,
           loading: false,
-        }));
+        });
         return;
       }
       
@@ -212,6 +353,9 @@ const useCartStore = create<CartStore>((set, get) => ({
       
       // If not logged in, handle locally
       if (response.status === 401) {
+        // Clear localStorage
+        localStorage.removeItem('cart');
+        
         set({ items: [], loading: false });
         toast.success("Cart cleared");
         return;

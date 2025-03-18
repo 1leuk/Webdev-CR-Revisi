@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast, Toaster } from "react-hot-toast";
+import { FiUser } from "react-icons/fi";
+import { FcGoogle } from "react-icons/fc";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -62,6 +65,11 @@ export default function RegisterPage() {
     }
   };
 
+  const handleGoogleLogin = () => {
+    setIsLoading(true);
+    signIn("google", { callbackUrl: "/home" });
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-black">
       <Toaster position="top-right" />
@@ -72,6 +80,26 @@ export default function RegisterPage() {
         <p className="text-gray-300 text-center mb-6">
           Join us and start shopping today!
         </p>
+        
+        {/* OAuth Login Button */}
+        <button
+          onClick={handleGoogleLogin}
+          disabled={isLoading}
+          className="w-full bg-white text-gray-800 py-3 rounded-md font-bold hover:bg-gray-100 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center mb-4"
+        >
+          <FcGoogle className="mr-2 text-xl" />
+          Sign up with Google
+        </button>
+        
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-600"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-gray-800 text-gray-400">Or sign up with email</span>
+          </div>
+        </div>
+        
         <form onSubmit={handleRegister} className="space-y-4">
           <div>
             <label className="block text-gray-300 mb-1">Name</label>
@@ -116,9 +144,10 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-yellow-500 text-black py-3 rounded-md font-bold hover:bg-yellow-600 transition disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full bg-yellow-500 text-black py-3 rounded-md font-bold hover:bg-yellow-600 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
           >
-            {isLoading ? "Creating Account..." : "Sign Up"}
+            <FiUser className="mr-2" />
+            {isLoading ? "Creating Account..." : "Sign Up with Email"}
           </button>
         </form>
         <p className="text-gray-400 text-center mt-4">

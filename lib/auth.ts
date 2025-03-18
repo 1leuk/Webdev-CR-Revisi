@@ -68,7 +68,17 @@ export async function createUser(
 ) {
   const hashedPassword = await hashPassword(password);
 
-  return await prisma.user.create({
+  // Check if user already exists
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (existingUser) {
+    throw new Error("User with this email already exists");
+  }
+
+  // Create new user
+  const user = await prisma.user.create({
     data: {
       email,
       password: hashedPassword,
@@ -76,4 +86,13 @@ export async function createUser(
       role: Role.USER,
     },
   });
+
+  // Create cart for the user
+  await prisma.cart.create({
+    data: {
+      userId: user.id,
+    },
+  });
+
+  return user;
 }
