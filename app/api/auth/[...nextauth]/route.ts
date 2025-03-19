@@ -97,21 +97,24 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     },
-    async signIn({ user, account }) {
-      // Create a cart for new OAuth users if they don't have one
+    async signIn({ user, account, profile }) {
+      // Only for OAuth sign-ins, ensure user has a cart
       if (account && account.provider !== "credentials" && user?.id) {
         try {
+          // Check if user already has a cart
           const existingCart = await prisma.cart.findFirst({
             where: { userId: user.id },
           });
 
           if (!existingCart) {
+            // Create a cart for the user if they don't have one
             await prisma.cart.create({
               data: { userId: user.id },
             });
           }
         } catch (error) {
-          console.error("Error creating cart for new user:", error);
+          console.error("Error creating cart for OAuth user:", error);
+          // Don't block sign-in if cart creation fails
         }
       }
 
@@ -122,6 +125,7 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   secret: process.env.NEXTAUTH_SECRET || process.env.NEXAUTH_SECRET, // Support both spellings
+  debug: process.env.NODE_ENV === "development",
 };
 
 const handler = NextAuth(authOptions);
